@@ -8,6 +8,23 @@ static void HandleError(cudaError_t err,const char * file,int line){
 }
 
 #define HANDLE_ERROR(err) (HandleError(err,__FILE__,__LINE__))
+
+int getThreadNum(){
+    cudaDeviceProp prop;
+    int count;
+    HANDLE_ERROR(cudaGetDeviceCount(&count));
+    printf("gpu num %d\n",count);
+    HANDLE_ERROR(cudaGetDeviceProperties(&prop,0));
+    printf("max thread num:%d\n",prop.maxThreadsPerBlock);
+    printf("max grid dimensions:%d %d %d\n",prop.maxGridSize[0],prop.maxGridSize[1],prop.maxGridSize[2]);
+    return prop.maxThreadsPerBlock;
+}
+
+__global__ void conv(float *img,float *kernel,float *result,int width,int height,int kernelSize){
+    int ti=threadIdx.x;
+    int bi=blockIdx.x;
+    
+}
 int main(){
     int width=10;
     int height=10;
@@ -30,7 +47,12 @@ int main(){
     HANDLE_ERROR(cudaMalloc((void**)&kernelGpu,kernelSize*kernelSize*sizeof(float)));
     HANDLE_ERROR(cudaMalloc((void**)&resultGpu,width*height*sizeof(float)));
 
-    HANDLE_ERROR(cudaMemcpy());
+    HANDLE_ERROR(cudaMemcpy(imgGpu,img,width*height*sizeof(float),cudaMemcpyHostToDevice));
+    HANDLE_ERROR(cudaMemcpy(kernelGpu,kernel,kernelSize*kernelSize*sizeof(float),cudaMemcpyHostToDevice));
+
+    int threadNum=getThreadNum();
+    int blockNum=(width*height-0.5)/threadNum+1;
+    conv<<<blockNum,threadNum>>>(imgGpu,kernelGpu,resultGpu,width,height,kernelSize);
     //Visualization
     printf("img:\n");
     for(int i=0;i<10;i++){
