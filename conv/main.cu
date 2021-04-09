@@ -23,7 +23,24 @@ int getThreadNum(){
 __global__ void conv(float *img,float *kernel,float *result,int width,int height,int kernelSize){
     int ti=threadIdx.x;
     int bi=blockIdx.x;
-    
+    int id=bi*blockDim.x+ti;
+    if(id>=width*height){
+        return ;
+    }
+    int row=id/width,col=id%width;
+    for(int i=0;i<kernelSize;i++){
+        for(int j=0;j<kernelSize;j++){
+            float imgValue=0;
+            int curRow=row-kernelSize/2+i;
+            int curCol=col-kernelSize/2+j;
+            if(curRow<0||curCol<0||curRow>=height||curCol>=width){
+                    ;
+            }else{
+                imgValue=img[curRow*width+curCol];
+            }
+            result[id]+=kernel[i*kernelSize+j]*imgValue;
+        }
+    }
 }
 int main(){
     int width=10;
@@ -53,6 +70,9 @@ int main(){
     int threadNum=getThreadNum();
     int blockNum=(width*height-0.5)/threadNum+1;
     conv<<<blockNum,threadNum>>>(imgGpu,kernelGpu,resultGpu,width,height,kernelSize);
+
+    float *result=new float[width*height];
+    HANDLE_ERROR(cudaMemcpy(result,resultGpu,width*height*sizeof(float),cudaMemcpyDeviceToHost));
     //Visualization
     printf("img:\n");
     for(int i=0;i<10;i++){
@@ -65,6 +85,13 @@ int main(){
     for(int i=0;i<kernelSize;i++){
         for(int j=0;j<kernelSize;j++){
             printf("%2.0lf ",kernel[i*kernelSize+j]);
+        }
+        puts("");
+    }
+    printf("result:\n");
+    for(int i=0;i<10;i++){
+        for(int j=0;j<10;j++){
+            printf("%2.0f ",result[j+i*width]);
         }
         puts("");
     }
